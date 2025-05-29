@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아이패밀리에스씨 인터랙티브 기업 분석</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Application Structure Plan: 
+        The SPA is structured thematically with a top navigation bar for easy access to key sections: 
+        1. 개요 (Overview): Basic company information, detailed history, and business structure.
+        2. 재무 분석 (Financial Analysis): Interactive charts for financial trends, tables for detailed data, and new charts for product revenue breakdown.
+        3. 사업 포트폴리오 (Business Portfolio): Tabbed interface for Cosmetics, Wedding, and Living segments, with updated content and focus on Cosmetics including regional and product performance charts.
+        4. 핵심 경쟁력 (Core Competencies): Highlights of the company's strengths and growth strategies.
+        5. ESG 및 전망 (ESG & Outlook): ESG initiatives, risks, and future outlook using accordions or styled lists.
+        6. 기타 참고사항 (Other Notes): Additional company information like credit rating and subsidiary details.
+        7. 결론 (Conclusion): Summary of the report.
+        This structure was chosen to provide a logical flow for users to explore the company from general information to specific details and future prospects, enhancing usability and comprehension of the complex report content. User flow is guided by the navigation, allowing non-linear exploration based on interest.
+    -->
+    <!-- Visualization & Content Choices:
+        - Overview: HTML lists/tables for static info (Goal: Inform). Justification: Clarity for foundational facts. Method: HTML/Tailwind.
+        - Financial Analysis: Line charts for trends (매출액, 영업이익, ROE), Bar chart for 1Q25 regional cosmetics growth (Goal: Compare, Change). NEW Doughnut chart for 1Q25 cosmetics product revenue breakdown (Goal: Inform, Proportion). HTML tables for detailed data. Justification: Visual trends, precise numbers, and clear product contribution. Method: Chart.js, HTML/Tailwind.
+        - Business Portfolio (Cosmetics): Doughnut chart for overseas regional sales contribution (Goal: Inform, Proportion). Text summaries for strategies. Justification: Key performance indicators visualized for the dominant segment. Method: Chart.js, HTML/Tailwind.
+        - Business Portfolio (Wedding, Living): Text summaries (Goal: Inform). Justification: Smaller segments, less data-intensive. Method: HTML/Tailwind.
+        - Core Competencies: Styled text (Goal: Inform). Justification: Qualitative strengths clearly presented. Method: HTML/Tailwind.
+        - ESG & Outlook: Accordion/list for ESG, bullet points for risks (Goal: Inform, Organize). Justification: Structured presentation of diverse information. Method: HTML/Tailwind, JS for interactions.
+        - Other Notes: HTML tables/lists (Goal: Inform). Justification: Presenting miscellaneous but important company facts. Method: HTML/Tailwind.
+        - All charts use Chart.js with Canvas. No SVG/Mermaid used. Interactions include chart tooltips, tab navigation, accordion toggles, and main navigation clicks.
+    -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8F9FA; color: #212529; }
+        .content-section { background-color: #FFFFFF; padding: 2rem; margin-bottom: 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .nav-link { padding: 0.5rem 1rem; margin: 0 0.25rem; border-radius: 0.375rem; transition: background-color 0.3s, color 0.3s; }
+        .nav-link:hover, .nav-link.active { background-color: #4DB6AC; color: white; }
+        h1, h2, h3 { color: #343A40; }
+        h1 { font-size: 2rem; font-weight: 700; margin-bottom: 1.5rem; text-align: center; color: #4DB6AC;}
+        h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; border-bottom: 2px solid #4DB6AC; padding-bottom: 0.5rem; }
+        h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem; color: #495057; }
+        p { line-height: 1.6; margin-bottom: 1rem; color: #495057; }
+        ul { list-style-position: inside; margin-bottom: 1rem; }
+        li { margin-bottom: 0.5rem; }
+        table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; }
+        th, td { border: 1px solid #DEE2E6; padding: 0.75rem; text-align: left; }
+        th { background-color: #E9ECEF; font-weight: 600; }
+        .chart-container { position: relative; width: 100%; max-width: 700px; margin-left: auto; margin-right: auto; height: 350px; max-height: 400px; padding: 1rem; background-color: #f9f9f9; border-radius: 0.5rem; margin-bottom:1.5rem; }
+        @media (max-width: 768px) { .chart-container { height: 300px; max-height: 350px;} h1 {font-size: 1.5rem;} h2 {font-size:1.25rem} h3 {font-size:1.1rem} }
+        .tab-button { padding: 0.5rem 1rem; margin-right: 0.5rem; border-radius: 0.375rem; background-color: #E9ECEF; color: #495057; cursor: pointer; transition: background-color 0.3s; }
+        .tab-button.active { background-color: #4DB6AC; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .kpi-card { background-color: #f8f9fa; padding: 1rem; border-radius: 0.5rem; text-align: center; box-shadow: 0 2px 4px rgb(0 0 0 / 0.05); }
+        .kpi-value { font-size: 1.5rem; font-weight: 700; color: #4DB6AC; }
+        .kpi-label { font-size: 0.875rem; color: #6C757D; }
+        .section-intro { font-style: italic; color: #6C757D; margin-bottom: 1.5rem; padding: 1rem; background-color: #eef7f6; border-left: 4px solid #4DB6AC; border-radius: 0.25rem;}
+    </style>
+</head>
+<body class="bg-slate-50">
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-center items-center">
+            <a href="#overview" class="nav-link">개요</a>
+            <a href="#financials" class="nav-link">재무 분석</a>
+            <a href="#business" class="nav-link">사업 포트폴리오</a>
+            <a href="#competitiveness" class="nav-link">핵심 경쟁력</a>
+            <a href="#esg" class="nav-link">ESG 및 전망</a>
+            <a href="#others" class="nav-link">기타 참고사항</a>
+            <a href="#conclusion" class="nav-link">결론</a>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 sm:p-6 lg:p-8 mt-4">
+        <h1 class="text-3xl font-bold text-center mb-8 text-teal-600">아이패밀리에스씨 인터랙티브 기업 분석</h1>
+
+        <section id="overview" class="content-section scroll-mt-20">
+            <h2>I. 기업 개요</h2>
+            <p class="section-intro">본 섹션에서는 아이패밀리에스씨의 기본적인 정보를 소개합니다. 회사의 설립부터 현재까지의 주요 연혁, 핵심 사업 부문 구성, 그리고 주주 현황 및 주요 시장 지표를 통해 기업에 대한 전반적인 이해를 돕고자 합니다.</p>
+            
+            <h3>A. 회사 연혁 및 주요 사업 부문</h3>
+            <p>아이패밀리에스씨(114840)는 2000년 IT 기반 웨딩서비스 기업 '아이웨딩'으로 출발했습니다. 2012년 현재의 사명으로 변경하고 사업 영역을 확장했으며, 2021년 10월 28일 코스닥 시장에 상장되었습니다. 주요 연혁은 다음과 같습니다:</p>
+            <ul class="list-disc">
+                <li><strong>2000년:</strong> IT 기반 웨딩서비스 기업 '아이웨딩'으로 출발.</li>
+                <li><strong>2012년:</strong> 아이패밀리에스씨로 사명 변경, 사업 영역 확장.</li>
+                <li><strong>2016년:</strong> 색조화장품 브랜드 '롬앤(Rom&nd)' 론칭, 18~24세 여성 타깃.</li>
+                <li><strong>2021년 10월 28일:</strong> 코스닥 시장 상장.</li>
+                <li><strong>2023년:</strong> 일본 편의점 Lawson 전용 브랜드 '앤드바이롬앤(&nd by Rom&nd)' 론칭.</li>
+                <li><strong>2023년 6월:</strong> 20대 후반 타깃의 기능성·비건 색조 브랜드 '누즈(Nuse)' 론칭.</li>
+            </ul>
+            <p><strong>본사:</strong> 서울 송파구 동남로122 (문정동, COLLECTED빌딩)</p>
+            <p><strong>대표이사:</strong> 김태욱, 김성현</p>
+
+            <h3>B. 사업 구조 및 주요 브랜드</h3>
+            <ul class="list-disc">
+                <li><strong>화장품사업부:</strong> 롬앤(Rom&nd), 앤드바이롬앤(And by Rom&nd), 누즈(Nuse)
+                    <ul class="list-circle ml-4">
+                        <li>주요 제품: 립틴트, 립스틱, 립밤, 아이섀도, 베이스, 마스카라, 선크림, 아이브로우, 아이라이너, 네일 등</li>
+                    </ul>
+                </li>
+                <li><strong>웨딩/리빙/App:</strong> 아이웨딩(iWedding), 호텔크랜베리(Hotel Cranberry), 자리아(Zaria), 옌센(Jensen)
+                    <ul class="list-circle ml-4">
+                        <li>웨딩 준비 품목 중개 및 판매 플랫폼, 리빙용품 편집숍</li>
+                    </ul>
+                </li>
+                <li><strong>광고대행:</strong> 브랜드플러스(IBrand+)
+                    <ul class="list-circle ml-4">
+                        <li>브랜드사의 온라인 광고대행</li>
+                    </ul>
+                </li>
+                <li><strong>App/IT:</strong> 아이컬러(iColor)
+                    <ul class="list-circle ml-4">
+                        <li>퍼스널컬러 진단 서비스, 뷰티 커뮤니티, 맞춤형 뷰티 콘텐츠, 스타일링 및 제품 추천</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>C. 주주 현황 및 시장 정보 (2025년 5월 8일 기준)</h3>
+            <table class="min-w-full divide-y divide-gray-200">
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr><td class="font-medium">시가총액</td><td>3,452억원</td></tr>
+                    <tr><td class="font-medium">발행주식수</td><td>17,319.9천주</td></tr>
+                    <tr><td class="font-medium">주요 주주</td><td>김태욱 외 2인 (41.58%)</td></tr>
+                    <tr><td class="font-medium">외국인 지분율</td><td>4.32%</td></tr>
+                    <tr><td class="font-medium">52주 최고가</td><td>42,800원</td></tr>
+                    <tr><td class="font-medium">52주 최저가</td><td>16,400원</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="financials" class="content-section scroll-mt-20">
+            <h2>II. 재무 성과 분석</h2>
+            <p class="section-intro">본 섹션에서는 아이패밀리에스씨의 최근 재무 성과를 다각도로 분석합니다. 연간 및 분기별 매출액, 영업이익 등의 주요 지표 변화 추이를 차트를 통해 시각적으로 확인하고, 수익성 및 재무 건전성에 대한 평가를 제공하여 기업의 재무 상태를 심층적으로 이해할 수 있도록 구성했습니다. 특히 2025년 1분기 화장품 사업부의 제품별 매출 비중을 상세히 다룹니다.</p>
+
+            <h3>A. 전반적인 재무 성과 (2022-2026F)</h3>
+            <p>아이패밀리에스씨는 최근 몇 년간 견조한 매출 및 이익 성장을 기록했습니다. 2024년 결산 기준 연결 매출액은 전년 동기 대비 37.8% 증가했으며, 영업이익은 40.2%, 당기순이익은 41.6% 각각 증가했습니다. 다만, 2025년 1분기 실적은 연결 매출 544억원(YoY -5%), 영업이익 71억원(YoY -40%)을 기록하며 일시적으로 컨센서스를 하회했습니다. 이는 재고자산평가손(8억원) 및 일회성 비용(10억원) 등이 반영된 결과입니다. 그럼에도 불구하고 해외 판로 확대는 긍정적으로 평가됩니다.</p>
+            <div class="chart-container"><canvas id="annualFinancialsChart"></canvas></div>
+            
+            <h3>B. 수익성 지표</h3>
+            <p>동사의 영업이익률은 2022년 11.14%에서 2024년 16.42%로 꾸준히 개선되었으며, ROE 또한 2022년 16.65%에서 2024년 35.26%로 크게 상승하며 효율적인 자본 활용을 보여주었습니다. 2025년 1분기 영업이익률은 일회성 비용 영향으로 13%로 일시 하락했습니다.</p>
+            <div class="chart-container"><canvas id="profitabilityChart"></canvas></div>
+
+            <h3>C. 재무 건전성</h3>
+            <p>부채비율은 2022년 44.08%에서 2024년 33.60%로 안정적인 수준을 유지하고 있어 견고한 재무 구조를 시사합니다.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="kpi-card">
+                    <div class="kpi-value" id="debtRatio2022">44.08%</div>
+                    <div class="kpi-label">2022년 부채비율</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="debtRatio2024">33.60%</div>
+                    <div class="kpi-label">2024년 부채비율</div>
+                </div>
+            </div>
+            
+            <h3>D. 주요 재무 성과 요약 (2022-2026F, 단위: 십억원)</h3>
+            <div class="overflow-x-auto">
+                <table id="financialTable1">
+                    <thead><tr><th>구분</th><th>2022</th><th>2023</th><th>2024</th><th>2025F</th><th>2026F</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">*참고: 2025년 및 2026년 추정치는 출처별로 상이할 수 있으며, 본 표에서는 주요 출처([7])를 우선적으로 사용했습니다.</p>
+
+            <h3>E. 1Q25 화장품 부문 실적 세부 내역 및 제품별 매출 비중</h3>
+            <p>2025년 1분기 화장품 부문 매출은 530억원(YoY -6%), 영업이익 73억원(YoY -40%)을 기록했습니다. 국내 매출은 1% 성장했으나, 해외 매출은 전반적으로 -8% 역성장했습니다. 그러나 일본 돈키호테 입점 물량 효과 제외 시 해외 매출은 18% 성장한 것으로 나타났습니다. 특히 유럽(+253%)과 미국(+34%), 중화권(+59%)의 성장이 두드러집니다.</p>
+            <div class="chart-container"><canvas id="cosmeticsRegionalGrowthChart"></canvas></div>
+             <div class="overflow-x-auto mt-4">
+                <table id="cosmeticsDetailTable">
+                    <thead>
+                        <tr><th>구분</th><th>1Q25 실적 (십억원)</th><th>YoY 성장률 (%)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>화장품 부문 총 매출</td><td>53.0</td><td>-6%</td></tr>
+                        <tr><td>국내 매출</td><td>15.6</td><td>+1%</td></tr>
+                        <tr><td>해외 매출 (총)</td><td>37.4</td><td>-8% (돈키호테 제외 +18%)</td></tr>
+                        <tr><td class="pl-8">일본</td><td>12.7</td><td>-37% (돈키호테 제외 +13%)</td></tr>
+                        <tr><td class="pl-8">동남아</td><td>7.0</td><td>+15%</td></tr>
+                        <tr><td class="pl-8">유럽</td><td>4.5</td><td>+253%</td></tr>
+                        <tr><td class="pl-8">미국</td><td>1.7</td><td>+34%</td></tr>
+                        <tr><td class="pl-8">중화권 (중국만)</td><td>N/A</td><td>+59%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-4">2025년 1분기 기준 화장품 사업부 매출은 531억원으로, 이 중 립틴트가 66%를 차지하며 주력 제품임을 보여줍니다. 아이섀도와 립밤이 그 뒤를 잇고 있습니다.</p>
+            <div class="chart-container"><canvas id="cosmeticsProductMixChart"></canvas></div>
+
+            <h3>F. 주요 제품 가격 및 원가 구조</h3>
+            <p>제품 평균 가격은 지속적으로 상승하는 추세입니다.</p>
+            <table class="min-w-full divide-y divide-gray-200">
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr><td class="font-medium">2023년 평균 가격</td><td>3,804원</td></tr>
+                    <tr><td class="font-medium">2024년 평균 가격</td><td>3,858원</td></tr>
+                    <tr><td class="font-medium">2025년 1분기 평균 가격</td><td>4,267원</td></tr>
+                </tbody>
+            </table>
+            <p class="text-xs text-gray-500 mt-1">*가격은 매출금액/매출수량의 단순평균입니다.</p>
+            <p class="mt-4">아이패밀리에스씨는 자체 생산설비 없이 OEM(주문자 상표 부착 생산) 방식으로 제품을 생산합니다. 주요 매입처는 A사(67%), B사(26%), C사(2%) 등입니다.</p>
+        </section>
+
+        <section id="business" class="content-section scroll-mt-20">
+            <h2>III. 사업 부문별 심층 분석</h2>
+            <p class="section-intro">본 섹션에서는 아이패밀리에스씨의 세 가지 주요 사업 부문인 화장품, 웨딩, 리빙 사업을 각각 심층적으로 분석합니다. 각 사업 부문의 시장 동향, 회사의 전략적 포지셔닝, 주요 성과 및 과제를 살펴보고, 특히 핵심 사업인 화장품 부문의 국내외 확장 전략과 성과에 대해 자세히 다룹니다.</p>
+            
+            <div class="mb-4 border-b border-gray-200">
+                <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+                    <button class="tab-button active" data-tab="cosmetics">화장품 사업</button>
+                    <button class="tab-button" data-tab="wedding">웨딩 사업</button>
+                    <button class="tab-button" data-tab="living">리빙 사업</button>
+                </nav>
+            </div>
+
+            <div id="cosmetics_content" class="tab-content active">
+                <h3>A. 화장품 사업 (롬앤, 앤드바이롬앤, 누즈)</h3>
+                <p>화장품 사업은 아이패밀리에스씨 전체 매출의 98% (2025년 1분기 기준)를 차지하는 핵심 동력입니다. K-뷰티의 글로벌 성장과 함께, 특히 18-24세 소비자를 타겟으로 하는 '롬앤' 브랜드가 성장을 견인하고 있습니다. SNS를 통한 효율적인 마케팅과 빠른 신제품 출시 주기가 특징입니다.</p>
+                
+                <h4>1. 국내 시장 전략 및 성과</h4>
+                <p>올리브영 입점을 통해 성공적으로 안착했으며, '더 쥬시', '멜팅밤' 등 신제품들이 히트하며 견조한 성과를 지속하고 있습니다. '코하' 플랫폼을 통해 소비자와 직접 소통하며 팬덤을 구축하고 있습니다.</p>
+
+                <h4>2. 해외 시장 확장 전략 및 성과</h4>
+                <p>중국 외 다양한 해외 시장으로의 다변화에 성공했습니다. '탈중국' 전략으로 중국 매출 비중은 2% 수준으로 낮추고, 일본, 동남아, 미국, 유럽 등에서 빠른 성장을 보이고 있습니다. 약 70개국에 진출하며 글로벌 입지를 다지고 있습니다.</p>
+                <div class="chart-container"><canvas id="overseasSalesContributionChart"></canvas></div>
+                <p class="mt-4"><strong>주요 해외 시장별 현황 (1Q25 YoY 성장률, 돈키호테 제외 기준):</strong></p>
+                <ul class="list-disc grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                    <li><strong>일본:</strong> +13% (Z세대 선호도 1위, 로손 편의점 '앤드바이롬앤' 론칭)</li>
+                    <li><strong>동남아:</strong> +15% (베트남, 필리핀 등 꾸준한 수요 증가)</li>
+                    <li><strong>미국:</strong> +34% (법인 설립, 틱톡샵 마케팅, MoCRA 승인 확보)</li>
+                    <li><strong>유럽:</strong> +253% (터키, 북유럽, 스페인 등 다수 국가 진출)</li>
+                    <li><strong>중화권 (중국):</strong> +59% (회복세, 낮은 매출 비중으로 리스크 관리)</li>
+                </ul>
+
+                <h4>3. 신제품 출시 및 제품 포트폴리오 다변화</h4>
+                <p>월 평균 8개의 신규 SKU를 출시하며, '레어쥬시 틴트', '해나 방 에디션'(해외 전용) 등 지속적인 신제품 출시로 포트폴리오를 강화하고 있습니다. 독자 금형을 활용한 차별화된 용기도 경쟁력입니다.</p>
+            </div>
+
+            <div id="wedding_content" class="tab-content">
+                <h3>B. 웨딩 사업 (아이웨딩)</h3>
+                <p>아이패밀리에스씨의 모태 사업이지만, 현재 매출 비중은 2% (2025년 1분기 기준)로 미미하며 2025년 1분기 2억원의 영업손실을 기록했습니다. 한국 웨딩 시장은 혼인 건수 급감, '웨딩플레이션'으로 불리는 비용 급증, 예식장 공급 부족 등 구조적 어려움에 직면해 있습니다. 아이웨딩은 다수의 웨딩 플랫폼과 경쟁하고 있으며, 비용이 상대적으로 높다는 인식도 존재합니다. 회사는 이 부문에 대한 공격적 투자보다는 현상 유지 또는 니치 시장 공략에 집중할 가능성이 높습니다.</p>
+            </div>
+
+            <div id="living_content" class="tab-content">
+                <h3>C. 리빙 사업 (호텔크랜베리, 옌센, 자리아)</h3>
+                <p>리빙 사업은 현재 전체 매출의 1% 미만을 차지합니다. 한국 홈퍼니싱 시장은 1인 가구 증가, 삶의 질 중시 경향으로 성장 잠재력이 있으나, 경쟁이 치열합니다. 아이패밀리에스씨는 편집숍 '호텔크랜베리'와 프리미엄 브랜드 '자리아'(구스 침구), '옌센'(노르웨이 침대)의 아시아 독점 판권을 통해 니치 시장을 공략하고 있습니다. 장기적 사업 다각화의 일환으로 볼 수 있습니다.</p>
+            </div>
+        </section>
+
+        <section id="competitiveness" class="content-section scroll-mt-20">
+            <h2>IV. 핵심 경쟁 우위 및 성장 동력</h2>
+            <p class="section-intro">본 섹션에서는 아이패밀리에스씨가 시장에서 경쟁 우위를 확보하고 지속적인 성장을 이룰 수 있는 핵심 동력들을 살펴봅니다. 민첩한 제품 개발 능력, 효율적인 마케팅 전략, 그리고 성공적인 글로벌 시장 다변화가 주요 경쟁력으로 평가됩니다.</p>
+            
+            <h3>A. 민첩한 제품 개발 및 트렌드 대응력</h3>
+            <p>'디자인 씽킹'과 '콘텐덕트(Content-Product)' 워크플로우를 통해 상품 개발 초기부터 콘텐츠, 디자인, 마케팅을 통합적으로 고려하여 월 평균 8개의 신규 SKU를 신속하게 출시합니다. '코하' 플랫폼을 통한 소비자 피드백 직접 반영으로 팬덤을 형성하고 브랜드 충성도를 높입니다.</p>
+
+            <h3>B. 효율적인 마케팅 및 강력한 브랜드 충성도</h3>
+            <p>전통 광고 대신 SNS와 인플루언서 마케팅(전 세계 3,000명 이상 풀 관리)에 집중하여 비용 효율적으로 매출 성장을 달성합니다. 젊은 소비자층과의 밀착 소통으로 강력한 브랜드 팬덤을 구축, '쥬시 래스팅 틴트' 리뉴얼 성공 등이 이를 증명합니다.</p>
+
+            <h3>C. 다각화된 글로벌 시장 침투</h3>
+            <p>선제적인 '탈중국' 전략으로 중국 매출 비중을 2%로 낮춰 리스크를 관리하고, 일본, 동남아, 유럽, 미국 등 약 70개 국가로 시장을 다변화했습니다. 각 지역 주요 온/오프라인 유통 채널(돈키호테, 로손, 아마존, 틱톡샵 등)에 적극 진출하여 글로벌 성장 기반을 마련했습니다.</p>
+            
+            <h3>D. 시장 환경 및 경쟁</h3>
+            <p>전 세계 16~64세 인구의 97.8%가 스마트폰을 보유하고 93.2%가 소셜미디어를 이용하는 환경은 화장품 및 웨딩 시장에 큰 영향을 미치고 있습니다. 아이패밀리에스씨는 이러한 SNS, 온라인 유통, 모바일 중심의 소비 패턴에 최적화된 사업 구조를 가지고 있습니다. 국내 색조화장품 시장 점유율은 약 3.14%로 추정되며, 이는 상위권에 해당합니다.</p>
+        </section>
+
+        <section id="esg" class="content-section scroll-mt-20">
+            <h2>V. ESG 경영 및 미래 전망</h2>
+            <p class="section-intro">본 섹션에서는 아이패밀리에스씨의 지속가능경영 노력인 ESG 활동 내용을 소개하고, 기업이 직면할 수 있는 잠재적 위험 요소와 함께 향후 성장 전망을 제시합니다. 이를 통해 기업의 장기적인 가치와 발전 가능성을 종합적으로 평가합니다.</p>
+
+            <h3>A. ESG 경영 이니셔티브</h3>
+            <div id="esgAccordion">
+                <div class="mb-2">
+                    <button data-target="esgE" class="accordion-button w-full text-left p-3 bg-gray-100 hover:bg-gray-200 rounded font-semibold">환경 (Environmental)</button>
+                    <div id="esgE" class="accordion-content p-3 border rounded-b hidden">
+                        <ul class="list-disc">
+                            <li>환경 경영 시스템 운영, 환경 영향 저감 노력</li>
+                            <li>친환경 건축 설계(단열성 유리)로 온실가스 배출 감소</li>
+                            <li>'그린팀' 운영, 사내 친환경 캠페인 (개인 용기 사용, 생분해성 포장재)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <button data-target="esgS" class="accordion-button w-full text-left p-3 bg-gray-100 hover:bg-gray-200 rounded font-semibold">사회 (Social)</button>
+                    <div id="esgS" class="accordion-content p-3 border rounded-b hidden">
+                        <ul class="list-disc">
+                            <li>임직원 고충 처리, 다양성 존중, 노사 협의체 운영</li>
+                            <li>고객 만족 센터 운영, 이용자 피해 보상 제도, 정보보호 체계 구축</li>
+                            <li>'케미프로젝트': 자립 준비 청년 경제적 지원 등 사회 공헌</li>
+                        </ul>
+                    </div>
+                </div>
+                <div>
+                    <button data-target="esgG" class="accordion-button w-full text-left p-3 bg-gray-100 hover:bg-gray-200 rounded font-semibold">지배구조 (Governance)</button>
+                    <div id="esgG" class="accordion-content p-3 border rounded-b hidden">
+                        <ul class="list-disc">
+                            <li>투명한 의사결정 체계 및 지배구조 구축</li>
+                            <li>IR 활동 및 공시 통한 주주 권익 보호 우선</li>
+                            <li>정기/임시 이사회 개최, 윤리경영 교육 강화</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <p class="mt-2 text-sm">한국ESG기준원(KCGS)으로부터 ESG 평가를 받고 있으며, 지속가능경영을 통해 비재무적 리스크를 관리 중입니다.</p>
+            
+            <h3>B. 잠재적 위험 요소</h3>
+            <ul class="list-disc">
+                <li><strong>단일 브랜드(롬앤) 의존도:</strong> 전체 매출에서 롬앤 비중이 높아, 유행 변화 및 경쟁 심화에 따른 리스크 존재. 지속적 혁신 및 포트폴리오 다변화 필요.</li>
+                <li><strong>시장 경쟁 심화:</strong> 신규 업체 진출 활발. 품질 개선 및 차별화된 서비스로 가격 경쟁 회피 노력 필요.</li>
+                <li><strong>글로벌 시장 불확실성:</strong> 국가별 규제, 인증, 재고 관리, 상품 등록 등의 장벽 존재.</li>
+            </ul>
+
+            <h3>C. 미래 성장 전망</h3>
+            <p>긍정적입니다. 화장품 부문의 성공적인 글로벌 확장(특히 미국 MoCRA 승인, 유럽/동남아 고성장)은 지속적인 성장을 견인할 것입니다. 신제품 출시, 포트폴리오 강화, 팬덤 마케팅도 핵심 동력입니다. 웨딩/리빙 사업은 비중은 작으나, 프리미엄 니치 시장 공략으로 장기적 사업 다각화에 기여할 잠재력이 있습니다.</p>
+        </section>
+
+        <section id="others" class="content-section scroll-mt-20">
+            <h2>VI. 기타 참고사항</h2>
+            <p class="section-intro">본 섹션에서는 아이패밀리에스씨와 관련된 기타 중요한 참고사항들을 제공합니다. 기업의 신용 등급, 중소기업/벤처기업 해당 여부, 상장 정보 및 연결 종속회사 현황 등을 포함하여 기업에 대한 포괄적인 이해를 돕습니다.</p>
+            <table class="min-w-full divide-y divide-gray-200">
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr><td class="font-medium">신용등급</td><td>NICE 평가정보 기준 A-, 현금흐름등급 CF3 (2024년 3월 15일 기준)</td></tr>
+                    <tr><td class="font-medium">중소기업/벤처기업 해당</td><td>중소기업 및 벤처기업에 해당 (중견기업 미해당)</td></tr>
+                    <tr><td class="font-medium">상장 정보</td><td>코스닥 상장 (2021년 10월 28일)</td></tr>
+                    <tr><td class="font-medium">연결 종속회사</td><td>비상장 1개 (2024년 기준)</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="conclusion" class="content-section scroll-mt-20">
+            <h2>VII. 결론</h2>
+            <p class="section-intro">본 애플리케이션을 통해 아이패밀리에스씨의 사업 전반과 미래 성장 가능성을 종합적으로 살펴보았습니다. 이 결론 섹션에서는 주요 분석 내용을 요약하고, 기업에 대한 최종적인 평가를 제시합니다.</p>
+            <p>아이패밀리에스씨는 핵심 브랜드 '롬앤'을 중심으로 K-뷰티 시장의 글로벌 확장을 성공적으로 주도하며 높은 성장세를 보이고 있습니다. 특히 중국 시장 의존도를 낮추고 일본, 동남아, 유럽, 미국 등 다양한 해외 시장으로 다변화한 전략은 강력한 경쟁 우위입니다. 이는 지정학적 리스크를 분산시키고 안정적인 성장을 가능하게 합니다.</p>
+            <p>민첩한 제품 개발, 효율적인 디지털 마케팅, 소비자 소통 기반의 강력한 팬덤 구축은 지속 성장의 핵심 역량입니다. 이를 통해 급변하는 뷰티 트렌드에 효과적으로 대응하고 신제품을 성공적으로 안착시키고 있습니다.</p>
+            <p>웨딩 및 리빙 사업은 현재 매출 영향이 미미하며, 웨딩 사업은 시장의 구조적 어려움으로 손실을 기록 중입니다. 그러나 리빙 사업의 프리미엄 니치 시장 공략은 장기적인 사업 다각화 측면에서 주목할 만합니다.</p>
+            <p>단일 브랜드 의존도, 시장 유행 변화, 글로벌 규제 등은 잠재적 위험 요소로 남아있어 지속적인 관리가 필요합니다. 종합적으로 볼 때, 아이패밀리에스씨는 변화하는 시장 트렌드에 효과적으로 대응하며 견고한 재무 성과와 함께 글로벌 성장을 지속할 잠재력을 보유한 기업으로 평가됩니다.</p>
+        </section>
+    </main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const financialData = {
+            years: ['2022', '2023', '2024', '2025F', '2026F'],
+            revenue: [85.3, 148.7, 204.9, 237.6, 266.3],
+            operatingProfit: [9.5, 24.0, 33.6, 41.3, 48.2],
+            netProfit: [7.6, 20.0, 28.3, 33.5, 39.3]
+        };
+
+        const profitabilityData = {
+            years: ['2022', '2023', '2024', '1Q25'],
+            operatingMargin: [11.14, 16.14, 16.42, 13.0],
+            roe: [16.65, 33.55, 35.26, null]
+        };
+        
+        const table1Data = [
+            { label: "매출액", values: [85.3, 148.7, 204.9, "237.6 [7] / 234.0 [1]", "266.3 [7]"] },
+            { label: "영업이익", values: [9.5, 24.0, 33.6, "41.3 [7] / 36.6 [1]", "48.2 [7]"] },
+            { label: "순이익", values: [7.6, 20.0, 28.3, "33.5 [7] / 30.1 [1]", "39.3 [7]"] },
+            { label: "EPS (원)", values: [453, 1166, 1644, "1,940 [7] / 1,738 [1]", "2,271 [7]"] },
+            { label: "영업이익률 (%)", values: [11.14, 16.14, 16.42, "15.66 [1]", "-"] }
+        ];
+
+        const financialTable1Body = document.getElementById('financialTable1').getElementsByTagName('tbody')[0];
+        table1Data.forEach(item => {
+            let row = financialTable1Body.insertRow();
+            let cellLabel = row.insertCell();
+            cellLabel.textContent = item.label;
+            item.values.forEach(val => {
+                let cellVal = row.insertCell();
+                cellVal.textContent = val;
+            });
+        });
+        
+        function createChart(ctx, type, data, options) {
+            new Chart(ctx, { type, data, options });
+        }
+
+        const commonChartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0, callback: function(value, index, values) { const label = this.getLabelForValue(value); return label.length > 16 ? label.substring(0,16) + '...' : label; } } },
+                y: { beginAtZero: true }
+            }
+        };
+
+        createChart(
+            document.getElementById('annualFinancialsChart').getContext('2d'),
+            'bar',
+            {
+                labels: financialData.years,
+                datasets: [
+                    { label: '매출액 (십억원)', data: financialData.revenue, backgroundColor: 'rgba(77, 182, 172, 0.6)', borderColor: 'rgba(77, 182, 172, 1)', borderWidth: 1 },
+                    { label: '영업이익 (십억원)', data: financialData.operatingProfit, backgroundColor: 'rgba(255, 127, 80, 0.6)', borderColor: 'rgba(255, 127, 80, 1)', borderWidth: 1 }
+                ]
+            },
+            commonChartOptions
+        );
+
+        createChart(
+            document.getElementById('profitabilityChart').getContext('2d'),
+            'line',
+            {
+                labels: profitabilityData.years,
+                datasets: [
+                    { label: '영업이익률 (%)', data: profitabilityData.operatingMargin, borderColor: 'rgba(77, 182, 172, 1)', tension: 0.1, fill: false },
+                    { label: 'ROE (%)', data: profitabilityData.roe, borderColor: 'rgba(100, 149, 237, 1)', tension: 0.1, fill: false }
+                ]
+            },
+            commonChartOptions
+        );
+
+        const cosmeticsRegionalGrowthData = {
+            labels: ['일본 (돈키호테 제외)', '동남아', '유럽', '미국', '중화권 (중국만)'],
+            datasets: [{
+                label: '1Q25 YoY 성장률 (%)',
+                data: [13, 15, 253, 34, 59],
+                backgroundColor: ['#FFB74D', '#FF8A65', '#4DB6AC', '#64B5F6', '#9575CD'],
+            }]
+        };
+        createChart(document.getElementById('cosmeticsRegionalGrowthChart').getContext('2d'), 'bar', cosmeticsRegionalGrowthData, commonChartOptions);
+        
+        const overseasSalesData = {
+             labels: ['일본', '동남아', '중화권', '미국', '유럽', '기타 국가'],
+             datasets: [{
+                label: '2024년 3분기 해외 매출 기여도 (%)',
+                data: [28, 17, 13, 4, 6, 35],
+                backgroundColor: ['#FFCD56', '#FF6384', '#36A2EB', '#4BC0C0', '#9966FF', '#FF9F40'],
+            }]
+        };
+        createChart(document.getElementById('overseasSalesContributionChart').getContext('2d'), 'doughnut', overseasSalesData, { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } });
+        
+        const cosmeticsProductMixData = {
+            labels: ['립틴트 (66%)', '아이섀도 (13%)', '립밤 (5%)', '치크+섀딩 (4%)', '에디션+기타 (5%)', '립스틱 (3%)', '베이스 (2%)'],
+            datasets: [{
+                label: '2025년 1분기 화장품 제품별 매출 비중',
+                data: [66, 13, 5, 4, 5, 3, 2],
+                backgroundColor: [
+                    '#4DB6AC', // Teal
+                    '#FF8A65', // Coral
+                    '#64B5F6', // Light Blue
+                    '#9575CD', // Amethyst
+                    '#FFD54F', // Amber
+                    '#A1887F', // Brown
+                    '#7986CB'  // Indigo
+                ],
+                hoverOffset: 4
+            }]
+        };
+        createChart(document.getElementById('cosmeticsProductMixChart').getContext('2d'), 'doughnut', cosmeticsProductMixData, { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } });
+
+
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                const targetTab = button.dataset.tab;
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === `${targetTab}_content`) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        const accordionButtons = document.querySelectorAll('.accordion-button');
+        accordionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetId = button.dataset.target;
+                const targetContent = document.getElementById(targetId);
+                const isVisible = targetContent.classList.contains('hidden');
+                
+                document.querySelectorAll('.accordion-content').forEach(ac => {
+                    if (ac.id !== targetId) ac.classList.add('hidden');
+                });
+                if (isVisible) {
+                    targetContent.classList.remove('hidden');
+                } else {
+                    targetContent.classList.add('hidden');
+                }
+            });
+        });
+        
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('section');
+
+        function changeActiveLink() {
+            let index = sections.length;
+            while(--index && window.scrollY + 100 < sections[index].offsetTop) {}
+            navLinks.forEach((link) => link.classList.remove('active'));
+            if (navLinks[index]) {
+                 navLinks[index].classList.add('active');
+            }
+        }
+        changeActiveLink();
+        window.addEventListener('scroll', changeActiveLink);
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                     const offset = targetElement.offsetTop - (document.querySelector('header').offsetHeight || 70);
+                     window.scrollTo({ top: offset, behavior: 'smooth' });
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>
